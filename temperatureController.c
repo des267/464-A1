@@ -97,7 +97,7 @@ void timerInterrupt() {
 }
 
 void uartInterrupt() {
-    int8_t input[INPUT_SIZE], i = 0;
+    int8_t input[FIFO_SIZE], i = 0;
 
     // Do not read user command if in active mode
     if (activeMode == TRUE) return;
@@ -112,27 +112,41 @@ void uartInterrupt() {
     while (UARTCharsAvail(UART0_BASE)) {
         int32_t ch = UARTCharGetNonBlocking(UART0_BASE) & 0X000000FF;
         input[i] = (uint8_t) ch;
-        if (i == INPUT_SIZE-1) break;
+        if (i == FIFO_SIZE - 1) break;
         i++;
     }
+
+    // If not valid command, return
+    if (isValidCommand(input) == FALSE) return;
 }
 
-int isValidInput(int8_t input[INPUT_SIZE]) {
-    for (int i = 0; i < INPUT_SIZE; i++) {
+/**
+ * Checks if the input from the UART is a valid command.
+ *
+ * @param input an int8_T array with the same length as the FIFO
+ * @return True (int = 1) or False (int = 0)
+ */
+int isValidCommand(int8_t input[FIFO_SIZE]) {
+    for (int i = 0; i < FIFO_SIZE; i++) {
         switch (i) {
             case 0:
-                if (input[i] != 50 || input[i] != 51) return 0;
+                if (input[i] != 50 || input[i] != 51 || input[i] != 70) return FALSE;
+                if (input[i] == 70 && input[i+1] != 70) return FALSE;
                 break;
             case 1:
-                if (input[i] < 48 || input[i] > 57 ) return 0;
+                if (input[i] < 48 || input[i] > 57 || input[i] != 70) return FALSE;
+                if (input[i] != 70 && input[i+1] == 70) return FALSE;
                 break;
             default:
-                if (input[i] != 32) return 0;
+                if (input[i] != 32) return FALSE;
         }
     }
-    return 1;
+    return TRUE;
 }
 
+/**
+ * Called by main.c, calls all setup functions.
+ */
 void setupAll() {
     setupLED();
     setupUART();

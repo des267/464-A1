@@ -16,13 +16,13 @@
 
 #define TRUE 1
 #define FALSE 0
-#define INPUT_SIZE 4
+#define FIFO_SIZE 4
 
 void setupLED();
 void setupTimer();
 void setupUART();
 void timerInterrupt();
 void uartInterrupt();
-int isValidInput(int8_t input[INPUT_SIZE]);
+int isValidCommand(int8_t input[INPUT_SIZE]);
 
 #endif
