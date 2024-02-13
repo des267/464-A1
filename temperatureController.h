@@ -23,6 +23,7 @@ void setupTimer();
 void setupUART();
 void timerInterrupt();
 void uartInterrupt();
-int isValidCommand(int8_t input[INPUT_SIZE]);
+int isValidCommand(int8_t input[FIFO_SIZE]);
+void setupAll();
 
 #endif

@@ -42,7 +42,7 @@ void setupTimer() {
     while (PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
 
     // Set the clock division for TIMER0 to 8
-    PRCMGPTimerClockDivisonSet(PRCM_CLOCK_DIV_8);
+    PRCMGPTimerClockDivisionSet(PRCM_CLOCK_DIV_8);
     PRCMLoadSet();
     while ( !PRCMLoadGet() );
 
@@ -68,7 +68,7 @@ void setupUART() {
     while ( !PRCMLoadGet() );
 
     // Enable UART pins
-    IOCPinTypeUART(UART0_BASE, IOID_2, IOID_3, IOID_19, IOID_18);
+    IOCPinTypeUart(UART0_BASE, IOID_2, IOID_3, IOID_19, IOID_18);
 
     // Disable UART
     UARTDisable(UART0_BASE);
