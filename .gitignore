@@ -1,5 +1,10 @@
 Debug/
-cc13x0f128.cmdn
+cc13x0f128.cmd
 targetConfigs/
 ccfg.c
 startup_ccs.c
+.ccsproject
+.cproject
+.project
+.settings
+
