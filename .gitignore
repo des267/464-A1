@@ -1,2 +1,5 @@
-/driverlib/
-/.idea/
+Debug/
+cc13x0f128.cmdn
+targetConfigs/
+ccfg.c
+startup_ccs.c
