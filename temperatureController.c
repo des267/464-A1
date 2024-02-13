@@ -12,7 +12,7 @@
 
 // Indicates if in sleep or active mode
 // Determines when UART can read next command
-int activeMode = 0;
+int activeMode = FALSE;
 
 // Temperatures
 int chosenTemp = 0;
@@ -150,5 +150,5 @@ int isValidCommand(int8_t input[FIFO_SIZE]) {
 void setupAll() {
     setupLED();
     setupUART();
-    setupTimer();
+    //setupTimer();
 }
