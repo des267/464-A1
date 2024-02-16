@@ -263,6 +263,11 @@ int isSleepCommand() {
     return TRUE;
 }
 
+/*
+ * Converts the temperature stored in the
+ * serial input into an integer and stores in
+ * the chosenTemp global variable.
+ */
 void getTempFromSerialInput() {
     int j = 1;
     chosenTemp = 0;
@@ -273,6 +278,10 @@ void getTempFromSerialInput() {
     }
 }
 
+/*
+ * Outputs the chosen temp vs active temp to the
+ * UART based on the text format "(chosenTemp,activeTemp)".
+ */
 void outputTemp() {
     char chTempStr[2];
     char currTempStr[2];
