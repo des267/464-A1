@@ -31,6 +31,7 @@ void uartInterrupt();
 int isValidCommand();
 int isSleepCommand();
 void getTempFromSerialInput();
+void outputTemp();
 void setupAll();
 
 #endif

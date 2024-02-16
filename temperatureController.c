@@ -6,6 +6,7 @@
 */
 
 #include "temperatureController.h"
+#include "stdio.h"
 
 #define BAUD_RATE 115200
 #define MS (48000000 / (8 * 1000))
@@ -129,6 +130,7 @@ void timerInterrupt() {
 
         // If chosen temp different from current temp, change to active mode
         if (chosenTemp != currentTemp) activeMode = TRUE;
+        else return;
     }
 
     // In heating mode if chosen > active temp
@@ -137,11 +139,14 @@ void timerInterrupt() {
             heatOn = TRUE;
             TimerLoadSet(GPT0_BASE, TIMER_A, 600*MS);
             UARTCharPut(UART0_BASE, (uint8_t) ('H' - 0));
+            UARTCharPut(UART0_BASE, '\n' + 0);
+            UARTCharPut(UART0_BASE, '\r' + 0);
         }
         else {
             heatOn = FALSE;
             TimerLoadSet(GPT0_BASE, TIMER_A, 400*MS);
             currentTemp += (rand() % 2);
+            outputTemp();
         }
         GPIO_toggleDio(IOID_6);
     }
@@ -151,10 +156,13 @@ void timerInterrupt() {
         if (coolOn == FALSE) {
             coolOn = TRUE;
             UARTCharPut(UART0_BASE, (uint8_t) ('C' - 0));
+            UARTCharPut(UART0_BASE, '\n' + 0);
+            UARTCharPut(UART0_BASE, '\r' + 0);
         }
         else {
             coolOn = FALSE;
             currentTemp -= (rand() % 2);
+            outputTemp();
         }
         GPIO_toggleDio(IOID_7);
         TimerLoadSet(GPT0_BASE, TIMER_A, 500*MS);
@@ -170,9 +178,6 @@ void timerInterrupt() {
 
 void uartInterrupt() {
     int8_t i = 0;
-
-    // Do not read user command if in active mode
-    if (activeMode == TRUE) return;
 
     // if interrupt status not from RX
     if (UARTIntStatus(UART0_BASE, true) != UART_INT_RX) return;
@@ -191,7 +196,6 @@ void uartInterrupt() {
     // While characters available
     while (UARTCharsAvail(UART0_BASE)) {
         int32_t ch = UARTCharGetNonBlocking(UART0_BASE) & 0X000000FF;
-        UARTCharPut(UART0_BASE, (int8_t) ch);
         *(input+i) = (uint8_t) ch;
         if (i == FIFO_SIZE - 1) break;
         i++;
@@ -203,10 +207,6 @@ void uartInterrupt() {
         input = NULL;
         return;
     }
-    // Free command before pointing to input
-//    else if (command != NULL) {
-//        free(command);
-//    }
 
     // Do not process new command if in active mode
     if (activeMode == TRUE) return;
@@ -228,11 +228,12 @@ int isValidCommand() {
         switch (i) {
             case 0:
                 if (ch != 50 && ch != 51 && ch != 70) return FALSE;
-                if (ch == 70 && *(input+i+1) != 70) return FALSE;
+                if (ch == 51 && *(input+1) != 48) return FALSE;
+                if (ch == 70 && *(input+1) != 70) return FALSE;
                 break;
             case 1:
                 if (ch < 48 && ch > 57 && ch != 70) return FALSE;
-                if (ch != 70 && *(input+i-1) == 70) return FALSE;
+                if (ch != 70 && *input == 70) return FALSE;
                 break;
             default:
                 if (ch != 32) return FALSE;
@@ -269,6 +270,36 @@ void getTempFromSerialInput() {
         chosenTemp += (num * pow(10, j));
         j--;
     }
+}
+
+void outputTemp() {
+    char chTempStr[2];
+    char currTempStr[2];
+    sprintf(chTempStr, "%d", chosenTemp);
+    sprintf(currTempStr, "%d", currentTemp);
+    UARTCharPut(UART0_BASE, '(' + 0);
+    for (int i=0; i<5; i++) {
+        switch (i) {
+            case 0:
+                UARTCharPut(UART0_BASE, currTempStr[i] + 0);
+                break;
+            case 1:
+                UARTCharPut(UART0_BASE, currTempStr[i] + 0);
+                break;
+            case 2:
+                UARTCharPut(UART0_BASE, ',' + 0);
+                break;
+            case 3:
+                UARTCharPut(UART0_BASE, chTempStr[i%3] + 0);
+                break;
+            case 4:
+                UARTCharPut(UART0_BASE, chTempStr[i%3] + 0);
+        }
+    }
+
+    UARTCharPut(UART0_BASE, ')' + 0);
+    UARTCharPut(UART0_BASE, '\n' + 0);
+    UARTCharPut(UART0_BASE, '\r' + 0);
 }
 
 /**
