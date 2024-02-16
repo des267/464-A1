@@ -128,8 +128,16 @@ void timerInterrupt() {
         // Gets temperature from serial input
         getTempFromSerialInput();
 
+        // If chosen temp less than 20 or greater than 30, do not proceed
+        if (chosenTemp < 20 || chosenTemp > 30) {
+            activeMode = FALSE;
+            return;
+        }
+
         // If chosen temp different from current temp, change to active mode
-        if (chosenTemp != currentTemp) activeMode = TRUE;
+        if (chosenTemp != currentTemp) {
+            activeMode = TRUE;
+        }
         else return;
     }
 
@@ -198,9 +206,14 @@ void uartInterrupt() {
     while (UARTCharsAvail(UART0_BASE)) {
         int32_t ch = UARTCharGetNonBlocking(UART0_BASE) & 0X000000FF;
         *(input+i) = (uint8_t) ch;
+        UARTCharPut(UART0_BASE, (int8_t) ch);
         if (i == FIFO_SIZE - 1) break;
         i++;
     }
+
+    // UART command put to display followed by newline and carrier return
+    UARTCharPut(UART0_BASE, (int8_t) '\n' - 0);
+    UARTCharPut(UART0_BASE, (int8_t) '\r' - 0);
 
     // If not valid command, free input memory and return
     if (isValidCommand(input) == FALSE) {

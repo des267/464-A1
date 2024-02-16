@@ -8,3 +8,10 @@
 	So, if a user then enters a second command before the current
 	temperature reaches the chosen temperature, it will clear the
 	command queued before it.
+	
+2. 	Sometimes when handling multiple commands during a cycle, it
+	would randomly set the chosenTemp to a single digit value
+	or outside the range of [20,30] and it was not the original
+	value that was input. As a solution I made an if statement at
+	the beginning that would stop the program from going into
+	active mode if the temp was outside of this range.
