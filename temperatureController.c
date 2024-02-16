@@ -14,9 +14,17 @@
 // Determines when UART can read next command
 int activeMode = FALSE;
 
+// Heat, cooling on status
+int heatOn = FALSE;
+int coolOn = FALSE;
+
 // Temperatures
 int chosenTemp = 0;
 int currentTemp = 0;
+
+// Holds user command cycles
+//int8_t *command = NULL;
+int8_t *input = NULL;
 
 void setupLED() {
     // Power on peripheral domain and wait till on
@@ -41,6 +49,16 @@ void setupTimer() {
     PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
     while (PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
 
+    // Power on TIMER0
+    PRCMPeripheralRunEnable(PRCM_PERIPH_TIMER0);
+
+    // Allow TIMER0 to operate while processor in sleep mode
+    PRCMPeripheralSleepEnable(PRCM_PERIPH_TIMER0);
+
+    // Load TIMER0 settings
+    PRCMLoadSet();
+    while ( !PRCMLoadGet() );
+
     // Set the clock division for TIMER0 to 8
     PRCMGPTimerClockDivisionSet(PRCM_CLOCK_DIV_8);
     PRCMLoadSet();
@@ -54,6 +72,9 @@ void setupTimer() {
 
     // Assign the interrupt handler for TIMER0
     TimerIntRegister(GPT0_BASE, TIMER_A, timerInterrupt);
+
+    // Enable timer interrupt
+    TimerIntEnable(GPT0_BASE, TIMER_TIMA_TIMEOUT);
 }
 
 void setupUART() {
@@ -93,11 +114,62 @@ void setupUART() {
 }
 
 void timerInterrupt() {
+    // Clear timer interrupt
+    TimerIntClear(GPT0_BASE, TIMER_TIMA_TIMEOUT);
 
+    // if not active, convert command
+    if (activeMode == FALSE) {
+        // If sleep command, go to sleep
+        if (isSleepCommand(input) == TRUE) {
+            return;
+        }
+
+        // Gets temperature from serial input
+        getTempFromSerialInput();
+
+        // If chosen temp different from current temp, change to active mode
+        if (chosenTemp != currentTemp) activeMode = TRUE;
+    }
+
+    // In heating mode if chosen > active temp
+    if (chosenTemp > currentTemp) {
+        if (heatOn == FALSE) {
+            heatOn = TRUE;
+            TimerLoadSet(GPT0_BASE, TIMER_A, 600*MS);
+            UARTCharPut(UART0_BASE, (uint8_t) ('H' - 0));
+        }
+        else {
+            heatOn = FALSE;
+            TimerLoadSet(GPT0_BASE, TIMER_A, 400*MS);
+            currentTemp += (rand() % 2);
+        }
+        GPIO_toggleDio(IOID_6);
+    }
+    // In cooling mode if chosen < active temp
+    else {
+        //
+        if (coolOn == FALSE) {
+            coolOn = TRUE;
+            UARTCharPut(UART0_BASE, (uint8_t) ('C' - 0));
+        }
+        else {
+            coolOn = FALSE;
+            currentTemp -= (rand() % 2);
+        }
+        GPIO_toggleDio(IOID_7);
+        TimerLoadSet(GPT0_BASE, TIMER_A, 500*MS);
+    }
+
+    // If active temp now same as chosen, disable active mode
+    if (currentTemp == chosenTemp) activeMode = FALSE;
+
+    // Re-enable interrupt and timer
+    TimerIntEnable(GPT0_BASE, TIMER_TIMA_TIMEOUT);
+    TimerEnable(GPT0_BASE, TIMER_A);
 }
 
 void uartInterrupt() {
-    int8_t input[FIFO_SIZE], i = 0;
+    int8_t i = 0;
 
     // Do not read user command if in active mode
     if (activeMode == TRUE) return;
@@ -108,16 +180,40 @@ void uartInterrupt() {
     // Clear RX and TX interrupts
     UARTIntClear(UART0_BASE, UART_INT_RX|UART_INT_TX);
 
+    // Free input first if not NULL
+    if (input != NULL) {
+        free(input);
+    }
+
+    // Allocate memory for input
+    input = (int8_t*) malloc(FIFO_SIZE * sizeof(int8_t));
+
     // While characters available
     while (UARTCharsAvail(UART0_BASE)) {
         int32_t ch = UARTCharGetNonBlocking(UART0_BASE) & 0X000000FF;
-        input[i] = (uint8_t) ch;
+        UARTCharPut(UART0_BASE, (int8_t) ch);
+        *(input+i) = (uint8_t) ch;
         if (i == FIFO_SIZE - 1) break;
         i++;
     }
 
-    // If not valid command, return
-    if (isValidCommand(input) == FALSE) return;
+    // If not valid command, free input memory and return
+    if (isValidCommand(input) == FALSE) {
+        free(input);
+        input = NULL;
+        return;
+    }
+    // Free command before pointing to input
+//    else if (command != NULL) {
+//        free(command);
+//    }
+
+    // Do not process new command if in active mode
+    if (activeMode == TRUE) return;
+
+    // Set timer to 0 seconds; enable to begin heat/cool process
+    TimerLoadSet(GPT0_BASE, TIMER_A, 0x00);
+    TimerEnable(GPT0_BASE, TIMER_A);
 }
 
 /**
@@ -126,22 +222,53 @@ void uartInterrupt() {
  * @param input an int8_T array with the same length as the FIFO
  * @return True (int = 1) or False (int = 0)
  */
-int isValidCommand(int8_t input[FIFO_SIZE]) {
+int isValidCommand() {
     for (int i = 0; i < FIFO_SIZE; i++) {
+        int8_t ch = *(input+i);
         switch (i) {
             case 0:
-                if (input[i] != 50 || input[i] != 51 || input[i] != 70) return FALSE;
-                if (input[i] == 70 && input[i+1] != 70) return FALSE;
+                if (ch != 50 && ch != 51 && ch != 70) return FALSE;
+                if (ch == 70 && *(input+i+1) != 70) return FALSE;
                 break;
             case 1:
-                if (input[i] < 48 || input[i] > 57 || input[i] != 70) return FALSE;
-                if (input[i] != 70 && input[i+1] == 70) return FALSE;
+                if (ch < 48 && ch > 57 && ch != 70) return FALSE;
+                if (ch != 70 && *(input+i-1) == 70) return FALSE;
                 break;
             default:
-                if (input[i] != 32) return FALSE;
+                if (ch != 32) return FALSE;
         }
     }
     return TRUE;
+}
+
+/*
+ * Accepts the serial input and checks if it is the
+ * sleep command, "FF  " or not. Returns True if sleep
+ * command, and False if not.
+ */
+int isSleepCommand() {
+    for (int i = 0; i < FIFO_SIZE; i++) {
+        int8_t ch = *(input+i);
+        switch (i) {
+            case 0 ... 1:
+                if (ch != 70) return FALSE;
+                break;
+
+            default:
+                if (ch != 32) return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+void getTempFromSerialInput() {
+    int j = 1;
+    chosenTemp = 0;
+    for (int i=0; i < 2; i++) {
+        int num = *(input+i) - 48;
+        chosenTemp += (num * pow(10, j));
+        j--;
+    }
 }
 
 /**
@@ -149,6 +276,6 @@ int isValidCommand(int8_t input[FIFO_SIZE]) {
  */
 void setupAll() {
     setupLED();
+    setupTimer();
     setupUART();
-    //setupTimer();
 }
