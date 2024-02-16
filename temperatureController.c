@@ -141,30 +141,31 @@ void timerInterrupt() {
             UARTCharPut(UART0_BASE, (uint8_t) ('H' - 0));
             UARTCharPut(UART0_BASE, '\n' + 0);
             UARTCharPut(UART0_BASE, '\r' + 0);
+            GPIO_setDio(IOID_6);
         }
         else {
             heatOn = FALSE;
             TimerLoadSet(GPT0_BASE, TIMER_A, 400*MS);
             currentTemp += (rand() % 2);
             outputTemp();
+            GPIO_clearDio(IOID_6);
         }
-        GPIO_toggleDio(IOID_6);
     }
     // In cooling mode if chosen < active temp
     else {
-        //
         if (coolOn == FALSE) {
             coolOn = TRUE;
             UARTCharPut(UART0_BASE, (uint8_t) ('C' - 0));
             UARTCharPut(UART0_BASE, '\n' + 0);
             UARTCharPut(UART0_BASE, '\r' + 0);
+            GPIO_toggleDio(IOID_7);
         }
         else {
             coolOn = FALSE;
             currentTemp -= (rand() % 2);
             outputTemp();
+            GPIO_clearDio(IOID_7);
         }
-        GPIO_toggleDio(IOID_7);
         TimerLoadSet(GPT0_BASE, TIMER_A, 500*MS);
     }
 

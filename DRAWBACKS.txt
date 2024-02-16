@@ -1,0 +1,10 @@
+1.	No command queue; can only hold a single command:
+
+	If the program is in a cooling or heating cycle, the
+	user is able to enter in a command mid process which will
+	then be processed next after the current command is processed.
+	
+	However, there is not a queue that holds multiple commands.
+	So, if a user then enters a second command before the current
+	temperature reaches the chosen temperature, it will clear the
+	command queued before it.

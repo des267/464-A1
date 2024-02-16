@@ -20,9 +20,6 @@
 #define FALSE 0
 #define FIFO_SIZE 4
 
-extern int chosenTemp;
-extern int8_t *input;
-
 void setupLED();
 void setupTimer();
 void setupUART();
