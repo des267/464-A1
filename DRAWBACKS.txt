@@ -15,3 +15,17 @@
 	value that was input. As a solution I made an if statement at
 	the beginning that would stop the program from going into
 	active mode if the temp was outside of this range.
+
+3.	No indication of going into sleep mode. If the user enters the
+	command "FF  ", the controller gives no indication that it is
+	going into sleep mode.
+
+4.	Device temperature starts at 0C. This means that every restart,
+	a new temperature command has to run up from 0C which can take
+	a while. A more realistic temperature might have been to start
+	at its minimum of 20C.
+
+
+Otherwise there were no other drawbacks I could find in the system. It
+appeared to respond correctly to valid commands and ignore invalid
+commands.
